@@ -1,0 +1,179 @@
+<!DOCTYPE aesl-source>
+<network>
+
+
+<!--list of global events-->
+
+
+<!--list of constants-->
+<constant value="1" name="THRESHOLD"/>
+<constant value="200" name="EDGE"/>
+<constant value="450" name="SPEED"/>
+<constant value="100" name="TURN_PERIOD"/>
+<constant value="250" name="FWD_PERIOD"/>
+<constant value="140" name="FWD_PERIOD2"/>
+<constant value="0" name="STOPPED"/>
+<constant value="1" name="FORWARD"/>
+<constant value="2" name="TURN"/>
+<constant value="7" name="TURN2"/>
+
+
+<!--show keywords state-->
+<keywords flag="true"/>
+
+
+<!--node thymio-II-->
+<node nodeId="1" name="thymio-II">var min 					
+var max 					
+var mean 				
+var turnCounter = 0
+var state
+var forwardPeriod
+ 
+#-----------------Initialization--------------------------#
+#starts robot in stopped state
+#all sensors inactive
+state = STOPPED
+motor.left.target = 0
+motor.right.target = 0
+ 
+#-----------------Event Handlers--------------------------#
+#sets robot to FORWARD state
+#activates sensors
+onevent button.forward 			
+	motor.left.target = SPEED 	
+	motor.right.target = SPEED
+	state = FORWARD
+	timer.period[0] = 0
+	
+	
+	
+#sets robot to STOPPED state
+#deactivates all sensors
+onevent button.backward
+	state = STOPPED
+	motor.left.target = 0
+	motor.right.target = 0
+	timer.period[0] = 0
+	timer.period[1] = 0
+	
+ 
+ 
+onevent prox
+	#wall detection
+	#each sensor has a different timer.period value to optimize speed
+	call math.stat( prox.horizontal[0:4], min, max, mean)
+	if max > THRESHOLD and max == prox.horizontal[0] then
+		if motor.right.target > 0 and motor.left.target > 0 then
+			state = TURN
+			motor.left.target = -SPEED
+			motor.right.target = SPEED 	
+			timer.period[0] = 650
+			turnCounter = 0
+		end
+		
+	elseif max > THRESHOLD and max == prox.horizontal[1] then
+		if motor.right.target > 0 and motor.left.target > 0 then
+			state = TURN
+			motor.left.target = -SPEED
+			motor.right.target = SPEED 	
+			timer.period[0] = 550
+			turnCounter = 0
+		end
+	
+	elseif max > THRESHOLD and max == prox.horizontal[2] then
+		if motor.right.target > 0 and motor.left.target > 0 then
+			state = TURN
+			motor.left.target = -SPEED
+			motor.right.target = SPEED 	
+			timer.period[0] = 500
+			turnCounter = 0
+		end
+	
+	elseif max > THRESHOLD and max == prox.horizontal[3] then
+		if motor.right.target > 0 and motor.left.target > 0 then
+			state = TURN
+			motor.left.target = -SPEED
+			motor.right.target = SPEED 	
+			timer.period[0] = 425
+			turnCounter = 0
+		end
+		
+	elseif max > THRESHOLD and max == prox.horizontal[4] then
+		if motor.right.target > 0 and motor.left.target > 0 then
+			state = TURN
+			motor.left.target = -SPEED
+			motor.right.target = SPEED 	
+			timer.period[0] = 350
+			turnCounter = 0
+		end
+	end
+	
+	
+	
+	#line detection
+	#if no sensors see the line robot isn't updated
+	#if right sensor sees like robot moves left
+	if prox.ground.delta[0] > 300 and prox.ground.delta[1] &lt; 300 and (state != 2 and state != STOPPED) then
+		timer.period[0] = 0
+		timer.period[1] = 0
+		motor.left.target=SPEED
+		motor.right.target=100
+	end
+	#if left sensor sees like robot moves right
+	if prox.ground.delta[0] &lt; 300 and prox.ground.delta[1] > 300 and (state != 2 and state != STOPPED) then
+		timer.period[0] = 0
+		timer.period[1] = 0
+		motor.left.target=100
+		motor.right.target=SPEED
+	end
+	#if both sensors see line robot moves right
+	#robot goes around left side of wall and will always need to turn right in this situation
+	if prox.ground.delta[0] &lt; 300 and prox.ground.delta[1] &lt; 300 and (state != 2 and state != STOPPED) then
+		timer.period[0] = 0
+		timer.period[1] = 0
+		motor.left.target=0
+		motor.right.target=SPEED
+	end
+	
+	
+	
+#forward part of turn	
+onevent timer0
+	state = FORWARD
+	motor.right.target = SPEED
+	motor.left.target = SPEED
+	timer.period[0] = 0
+	#first timer length going forward is longer in order to get around wall
+	if forwardPeriod &lt; 1 then
+		timer.period[1] = FWD_PERIOD
+		forwardPeriod++
+	else
+		timer.period[1] = FWD_PERIOD2
+	end
+	
+ 
+	
+#turning part of turn
+onevent timer1
+	#robot turns very small amount
+	if turnCounter &lt; 50 then
+		state = TURN2
+		motor.left.target = SPEED
+		motor.right.target = -50
+		timer.period[1] = 0
+		timer.period[0] = TURN_PERIOD
+		turnCounter++
+	else
+		state = FORWARD
+		timer.period[0] = 0
+		timer.period[1] = 0
+		motor.left.target = SPEED
+		motor.right.target = SPEED
+		turnCounter = 0
+		forwardPeriod = 0
+	end
+</node>
+
+
+</network>
